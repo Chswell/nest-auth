@@ -7,326 +7,71 @@ datasource db {
   provider = "postgresql"
 }
 
-/// Роли пользователей: супер‑админ, админ, сотрудник
-enum UserRole {
-  superadmin
-  admin
-  worker
-}
-
-/// Статус графика
-enum ScheduleStatus {
-  draft
-  pending_approval
-  approved
-  rejected
-}
-
-/// Тип уведомления
-enum NotificationType {
-  schedule_edit_by_admin
-  schedule_approval_request
-  schedule_approved
-  schedule_rejected
-  feed_post
-  shift_handover
-}
-
-/// Тайм‑слоты маршрутного листа
-enum RouteSheetTimeSlotId {
-  E8_11   @map("8_11")
-  E11_14  @map("11_14")
-  E14_17  @map("14_17")
-  E17_20  @map("17_20")
-}
-
-/// Пол ушедшего клиента
-enum GoneGender {
-  male
-  female
-  unknown
-}
-
-/// Причина ухода клиента
-enum GoneReasonId {
-  price
-  tour
-  nonbuyer
-  notfound
-  other
-}
-
-/// Статус запроса на согласование графика
-enum ScheduleApprovalStatus {
-  pending
-  approved
-  rejected
-}
-
-model Store {
-  id        String   @id @default(cuid())
-  name      String
-  address   String
-
-  users            User[]
-  inventories      Inventory[]
-  routeSheets      RouteSheet[]
-  goneMonthlyLists GoneMonthlyList[]
-  shiftHandovers   ShiftHandover[]
-
-  @@index([name])
-}
-
 model User {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  name              String
-  role              UserRole
-  telegram          String?  /// Telegram username без @
+  id String @id @default(uuid())
 
-  /// Магазин для сотрудника (только для worker)
-  storeId           String?
-  store             Store?   @relation(fields: [storeId], references: [id])
+  email    String @unique
+  password String
 
-  /// Шаблон графика: "2/2" или "5/2"
-  schedulePattern   String?
-  /// Дата начала работы (YYYY-MM-DD)
-  scheduleStartDate DateTime?
-  /// Шаблон времени смены, например "7" или "13-22"
-  shiftTemplate     String?
-  /// Ночной сотрудник
-  isNightWorker     Boolean? @default(false)
+  displayName String
+  picture     String?
 
-  schedules              EmployeeSchedule[]
-  feedPosts              FeedPost[]
-  notifications          Notification[]        @relation("NotificationRecipient")
-  scheduleApprovalReqs   ScheduleApprovalRequest[]
+  role UserRole @default(REGULAR)
 
-  @@index([role])
+  isVerified         Boolean @default(false) @map("is_verified")
+  isTwoFactorEnabled Boolean @default(false) @map("is_two_factor_enabled")
+
+  method   AuthMethod
+  accounts Account[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
 }
 
-model EmployeeSchedule {
-  id             String          @id @default(cuid())
+model Account {
+  id String @id @default(uuid())
 
-  employeeId     String
-  employee       User            @relation(fields: [employeeId], references: [id])
+  type         String
+  provider     String
+  accessToken  String? @map("access_token")
+  refreshToken String? @map("refresh_token")
+  expiresAt    Int     @map("expires_at")
 
-  /// Месяц в формате YYYY-MM
-  month          String
-  days           ScheduleDay[]
-  status         ScheduleStatus
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  /// дублирование информации о магазине для удобства выборок
-  storeId        String?
-  storeName      String?
-  storeAddress   String?
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String? @map("user_id")
 
-  editedBy       String?
-  editedAt       DateTime?
-  rejectionReason String?
-
-  isNightWorker  Boolean?
-  telegram       String?
-
-  @@unique([employeeId, month])
-  @@index([month])
+  @@map("accounts")
 }
 
-model ScheduleDay {
-  id          String           @id @default(cuid())
-  scheduleId  String
-  schedule    EmployeeSchedule @relation(fields: [scheduleId], references: [id])
+model Token {
+  id String @id @default(uuid())
 
-  date        DateTime         /// конкретный день месяца
-  value       String           /// отображаемое значение: "7", "8-22", "" и т.п.
+  email     String
+  token     String    @unique
+  type      TokenType
+  expiresIn DateTime  @map("expires_in")
 
-  @@unique([scheduleId, date])
+  @@map("tokens")
 }
 
-model Inventory {
-  id        String            @id @default(cuid())
-  storeId   String
-  store     Store             @relation(fields: [storeId], references: [id])
-  createdAt DateTime          @default(now())
-
-  rows      InventoryItem[]
-
-  @@index([storeId, createdAt])
+enum UserRole {
+  REGULAR
+  ADMIN
 }
 
-model InventoryItem {
-  id          String    @id @default(cuid())
-  inventoryId String
-  inventory   Inventory @relation(fields: [inventoryId], references: [id])
-
-  storeId     String
-  flowerName  String
-  pf          Int       @default(0)
-  showcase    Int       @default(0)
-  writeOff    Int       @default(0)
-  bouquets    Int       @default(0)
-
-  @@index([inventoryId])
-  @@index([storeId])
+enum AuthMethod {
+  CREDENTIALS
+  GOOGLE
+  YANDEX
 }
 
-model RouteSheet {
-  id          String          @id @default(cuid())
-  storeId     String
-  store       Store           @relation(fields: [storeId], references: [id])
-
-  date        DateTime        /// дата маршрута (YYYY-MM-DD)
-  createdAt   DateTime        @default(now())
-
-  storeName   String?
-  storeAddress String?
-
-  rows        RouteSheetRow[]
-
-  @@unique([storeId, date])
+enum TokenType {
+  VERIFICATION
+  TWO_FACTOR
+  PASSWORD_RESET
 }
-
-model RouteSheetRow {
-  id            String          @id @default(cuid())
-  routeSheetId  String
-  routeSheet    RouteSheet      @relation(fields: [routeSheetId], references: [id])
-
-  slotId        RouteSheetTimeSlotId
-  newOrder      Boolean
-  otherTime     Boolean
-  otherTimeValue String?
-  timeNote      Boolean
-  timeNoteValue String?
-  courier       String
-  orderNumber   String
-  deliveryAddress String
-  customerName  String
-  customerPhone String
-  recipientName String
-  recipientPhone String
-  details       String
-  paid          Boolean
-  fromSite      Boolean
-  amount        Float?
-  deliveryStepNotified Boolean
-  ready         Boolean
-  delivered     Boolean
-
-  @@index([routeSheetId])
-}
-
-model GoneMonthlyList {
-  id        String        @id @default(cuid())
-  storeId   String
-  store     Store         @relation(fields: [storeId], references: [id])
-
-  /// Месяц в формате YYYY-MM
-  month     String
-  createdAt DateTime      @default(now())
-
-  days      GoneDayRow[]
-
-  @@unique([storeId, month])
-}
-
-model GoneDayRow {
-  id               String          @id @default(cuid())
-  monthlyListId    String
-  monthlyList      GoneMonthlyList @relation(fields: [monthlyListId], references: [id])
-
-  date             DateTime        /// конкретный день (YYYY-MM-DD)
-  items            GoneSubRow[]
-
-  @@unique([monthlyListId, date])
-}
-
-model GoneSubRow {
-  id        String     @id @default(cuid())
-  dayId     String
-  day       GoneDayRow @relation(fields: [dayId], references: [id])
-
-  time      String
-  floristId String?
-  gender    GoneGender
-  compliment Boolean
-  reason    GoneReasonId?
-  comment   String?
-  returned  Boolean
-
-  @@index([dayId])
-}
-
-model ShiftHandover {
-  id           String              @id @default(cuid())
-  storeId      String
-  store        Store               @relation(fields: [storeId], references: [id])
-
-  date         DateTime            /// дата передачи смены (YYYY-MM-DD)
-  createdBy    String              /// id пользователя (User.id)
-  createdAt    DateTime            @default(now())
-
-  assignedTo   String?
-  assignedToName String?
-
-  items        ShiftHandoverItem[]
-
-  @@index([storeId, date])
-}
-
-model ShiftHandoverItem {
-  id           String         @id @default(cuid())
-  handoverId   String
-  handover     ShiftHandover  @relation(fields: [handoverId], references: [id])
-
-  text         String
-  done         Boolean        @default(false)
-  comment      String?
-
-  @@index([handoverId])
-}
-
-model Notification {
-  id          String           @id @default(cuid())
-  type        NotificationType
-  title       String
-  message     String
-  createdAt   DateTime         @default(now())
-  read        Boolean          @default(false)
-
-  /// Если задан, уведомление видно только этому пользователю
-  recipientId String?
-  recipient   User?            @relation("NotificationRecipient", fields: [recipientId], references: [id])
-
-  /// Дополнительные данные (scheduleId, employeeId, postId, handoverId, storeId)
-  meta        Json?
-
-  @@index([recipientId])
-}
-
-model FeedPost {
-  id         String   @id @default(cuid())
-  authorId   String
-  author     User     @relation(fields: [authorId], references: [id])
-
-  title      String
-  content    String
-  createdAt  DateTime @default(now())
-
-  @@index([authorId, createdAt])
-}
-
-model ScheduleApprovalRequest {
-  id            String                  @id @default(cuid())
-  employeeId    String
-  employee      User                    @relation(fields: [employeeId], references: [id])
-  employeeName  String
-
-  month         String                  /// YYYY-MM
-  status        ScheduleApprovalStatus
-  requestedAt   DateTime                @default(now())
-  rejectionReason String?
-
-  @@index([employeeId])
-  @@index([month, status])
-}
-

@@ -11,8 +11,6 @@ import { AppModule } from './app.module'
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule)
 
-	app.setGlobalPrefix('api')
-
 	const config = app.get(ConfigService)
 	const redisClient = createClient({
 		url: config.getOrThrow<string>('REDIS_URI')
@@ -26,7 +24,7 @@ async function bootstrap() {
 	)
 
 	app.use(
-		(session as (opts: object) => import('express').RequestHandler)({
+		session({
 			secret: config.getOrThrow<string>('SESSION_SECRET'),
 			name: config.getOrThrow<string>('SESSION_NAME'),
 			resave: true,

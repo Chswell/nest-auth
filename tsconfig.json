@@ -21,7 +21,6 @@
 		},
     "incremental": true,
     "skipLibCheck": true,
-    "types": ["node"],
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,

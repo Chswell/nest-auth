@@ -81,13 +81,7 @@
       "ts"
     ],
     "rootDir": "src",
-    "testMatch": [
-      "**/*.spec.ts"
-    ],
-    "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/$1",
-      "^@prisma/__generated__$": "<rootDir>/prisma-generated.mock.ts"
-    },
+    "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
