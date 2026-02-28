@@ -1,0 +1,1396 @@
+openapi: 3.0.3
+info:
+  title: Schedules Manager Backend API
+  version: "1.0.0"
+servers:
+  - url: /api
+    description: Base API URL
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          nullable: true
+      required:
+        - error
+        - message
+    UserRole:
+      type: string
+      enum: [superadmin, admin, worker]
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+      required: [id, name, address]
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+        telegram:
+          type: string
+          description: Telegram username без @
+        storeId:
+          type: string
+        schedulePattern:
+          type: string
+          enum: ["2/2", "5/2"]
+        scheduleStartDate:
+          type: string
+          format: date
+        shiftTemplate:
+          type: string
+        isNightWorker:
+          type: boolean
+      required: [id, email, name, role]
+    ScheduleStatus:
+      type: string
+      enum: [draft, pending_approval, approved, rejected]
+    ScheduleDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        value:
+          type: string
+          description: Отображаемое значение, например "7", "8-22" или ""
+      required: [date, value]
+    EmployeeSchedule:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        employeeName:
+          type: string
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleDay"
+        status:
+          $ref: "#/components/schemas/ScheduleStatus"
+        storeId:
+          type: string
+        storeName:
+          type: string
+        storeAddress:
+          type: string
+        editedBy:
+          type: string
+        editedAt:
+          type: string
+          format: date-time
+        rejectionReason:
+          type: string
+        isNightWorker:
+          type: boolean
+        telegram:
+          type: string
+      required: [employeeId, employeeName, month, days, status]
+    FlowerName:
+      type: string
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        storeId:
+          type: string
+        flowerName:
+          $ref: "#/components/schemas/FlowerName"
+        pf:
+          type: number
+        showcase:
+          type: number
+        writeOff:
+          type: number
+        bouquets:
+          type: number
+      required: [id, storeId, flowerName, pf, showcase, writeOff, bouquets]
+    InventorySummary:
+      type: object
+      properties:
+        id:
+          type: string
+        storeId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, storeId, createdAt]
+    InventoryFull:
+      allOf:
+        - $ref: "#/components/schemas/InventorySummary"
+        - type: object
+          properties:
+            rows:
+              type: array
+              items:
+                $ref: "#/components/schemas/InventoryItem"
+          required: [rows]
+    RouteSheetTimeSlotId:
+      type: string
+      enum: ["8_11", "11_14", "14_17", "17_20"]
+    RouteSheetRow:
+      type: object
+      properties:
+        id:
+          type: string
+        slotId:
+          $ref: "#/components/schemas/RouteSheetTimeSlotId"
+        newOrder:
+          type: boolean
+        otherTime:
+          type: boolean
+        otherTimeValue:
+          type: string
+        timeNote:
+          type: boolean
+        timeNoteValue:
+          type: string
+        courier:
+          type: string
+        orderNumber:
+          type: string
+        deliveryAddress:
+          type: string
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        recipientName:
+          type: string
+        recipientPhone:
+          type: string
+        details:
+          type: string
+        paid:
+          type: boolean
+        fromSite:
+          type: boolean
+        amount:
+          type: number
+          nullable: true
+        deliveryStepNotified:
+          type: boolean
+        ready:
+          type: boolean
+        delivered:
+          type: boolean
+      required:
+        - id
+        - slotId
+        - newOrder
+        - otherTime
+        - timeNote
+        - courier
+        - orderNumber
+        - deliveryAddress
+        - customerName
+        - customerPhone
+        - recipientName
+        - recipientPhone
+        - details
+        - paid
+        - fromSite
+        - deliveryStepNotified
+        - ready
+        - delivered
+    RouteSheet:
+      type: object
+      properties:
+        id:
+          type: string
+        storeId:
+          type: string
+        storeName:
+          type: string
+        storeAddress:
+          type: string
+        date:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/RouteSheetRow"
+      required: [id, storeId, date, createdAt, rows]
+    NotificationType:
+      type: string
+      enum:
+        - schedule_edit_by_admin
+        - schedule_approval_request
+        - schedule_approved
+        - schedule_rejected
+        - feed_post
+        - shift_handover
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        title:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+        recipientId:
+          type: string
+        meta:
+          type: object
+          properties:
+            scheduleId:
+              type: string
+            employeeId:
+              type: string
+            postId:
+              type: string
+            handoverId:
+              type: string
+            storeId:
+              type: string
+      required: [id, type, title, message, createdAt, read]
+    FeedPost:
+      type: object
+      properties:
+        id:
+          type: string
+        authorId:
+          type: string
+        authorName:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, authorId, authorName, title, content, createdAt]
+    ScheduleApprovalRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        employeeId:
+          type: string
+        employeeName:
+          type: string
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        requestedAt:
+          type: string
+          format: date-time
+        rejectionReason:
+          type: string
+      required: [id, employeeId, employeeName, month, status, requestedAt]
+    GoneGender:
+      type: string
+      enum: [male, female, unknown]
+    GoneReasonId:
+      type: string
+      enum: [price, tour, nonbuyer, notfound, other]
+    GoneSubRow:
+      type: object
+      properties:
+        id:
+          type: string
+        time:
+          type: string
+          description: "HH:MM"
+        floristId:
+          type: string
+        gender:
+          $ref: "#/components/schemas/GoneGender"
+        compliment:
+          type: boolean
+        reason:
+          $ref: "#/components/schemas/GoneReasonId"
+          nullable: true
+        comment:
+          type: string
+        returned:
+          type: boolean
+      required: [id, time, gender, compliment, returned]
+    GoneDayRow:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoneSubRow"
+      required: [date, items]
+    GoneMonthlyList:
+      type: object
+      properties:
+        id:
+          type: string
+        storeId:
+          type: string
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+        createdAt:
+          type: string
+          format: date-time
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoneDayRow"
+      required: [id, storeId, month, createdAt, days]
+    ShiftHandoverItem:
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        done:
+          type: boolean
+        comment:
+          type: string
+      required: [id, text, done]
+    ShiftHandover:
+      type: object
+      properties:
+        id:
+          type: string
+        storeId:
+          type: string
+        storeName:
+          type: string
+        storeAddress:
+          type: string
+        date:
+          type: string
+          format: date
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        assignedTo:
+          type: string
+        assignedToName:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShiftHandoverItem"
+      required: [id, storeId, date, createdBy, createdAt, items]
+    DashboardStoreWorkers:
+      type: object
+      properties:
+        storeId:
+          type: string
+        storeName:
+          type: string
+        storeAddress:
+          type: string
+        workers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              telegram:
+                type: string
+            required: [id, name]
+      required: [storeId, workers]
+    DashboardGoneStatsByReason:
+      type: object
+      properties:
+        storeId:
+          type: string
+        storeName:
+          type: string
+        storeAddress:
+          type: string
+        total:
+          type: number
+        byReason:
+          type: object
+          properties:
+            price:
+              type: number
+            tour:
+              type: number
+            nonbuyer:
+              type: number
+            notfound:
+              type: number
+            other:
+              type: number
+          required: [price, tour, nonbuyer, notfound, other]
+      required: [storeId, total, byReason]
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Вход пользователя
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required: [email, password]
+      responses:
+        "200":
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/User"
+                required: [token, user]
+        "401":
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Текущий пользователь
+      responses:
+        "200":
+          description: Текущий пользователь или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/User"
+                  - type: "null"
+        "401":
+          description: Неавторизован
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выход пользователя
+      responses:
+        "204":
+          description: Успешный выход
+  /stores:
+    get:
+      tags: [Stores]
+      summary: Список магазинов
+      responses:
+        "200":
+          description: Массив магазинов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Store"
+    post:
+      tags: [Stores]
+      summary: Создать магазин
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+              required: [name, address]
+      responses:
+        "201":
+          description: Созданный магазин
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+  /stores/{storeId}/workers:
+    get:
+      tags: [Stores, Employees]
+      summary: Работники магазина
+      parameters:
+        - in: path
+          name: storeId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Работники указанного магазина
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /employees:
+    get:
+      tags: [Employees]
+      summary: Список сотрудников
+      parameters:
+        - in: query
+          name: role
+          schema:
+            $ref: "#/components/schemas/UserRole"
+        - in: query
+          name: storeId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Массив сотрудников
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /employees/{id}:
+    get:
+      tags: [Employees]
+      summary: Получить сотрудника
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Сотрудник
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Не найден
+    patch:
+      tags: [Employees]
+      summary: Обновить сотрудника
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Обновленный сотрудник
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      tags: [Employees]
+      summary: Удалить сотрудника
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Успешное удаление
+  /employees/bulk:
+    post:
+      tags: [Employees]
+      summary: Массовое создание сотрудников
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employees:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      login:
+                        type: string
+                      password:
+                        type: string
+                      telegram:
+                        type: string
+                    required: [name, login, password]
+                storeId:
+                  type: string
+                newStoreName:
+                  type: string
+                schedulePattern:
+                  type: string
+                  enum: ["2/2", "5/2"]
+                startDate:
+                  type: string
+                  format: date
+                shiftTemplate:
+                  type: string
+                isNightWorker:
+                  type: boolean
+              required: [employees]
+      responses:
+        "201":
+          description: Созданные сотрудники
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /schedules:
+    get:
+      tags: [Schedules]
+      summary: Графики всех сотрудников за месяц
+      parameters:
+        - in: query
+          name: month
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: Графики сотрудников
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeSchedule"
+  /schedules/{employeeId}:
+    get:
+      tags: [Schedules]
+      summary: График конкретного сотрудника за месяц
+      parameters:
+        - in: path
+          name: employeeId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: month
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: График сотрудника или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/EmployeeSchedule"
+                  - type: "null"
+  /schedules/{employeeId}/{month}:
+    put:
+      tags: [Schedules]
+      summary: Обновить график сотрудника
+      parameters:
+        - in: path
+          name: employeeId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: month
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ScheduleDay"
+              required: [days]
+      responses:
+        "200":
+          description: Обновленный график
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeSchedule"
+  /schedule-approval-requests:
+    get:
+      tags: [Schedules]
+      summary: Запросы на согласование графиков
+      responses:
+        "200":
+          description: Список запросов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleApprovalRequest"
+  /schedule-approval-requests/{id}/approve:
+    post:
+      tags: [Schedules]
+      summary: Согласовать график
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Обновленный запрос или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleApprovalRequest"
+                  - type: "null"
+  /schedule-approval-requests/{id}/reject:
+    post:
+      tags: [Schedules]
+      summary: Отклонить график
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Обновленный запрос или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleApprovalRequest"
+                  - type: "null"
+  /inventory/flower-names:
+    get:
+      tags: [Inventory]
+      summary: Список названий цветов
+      responses:
+        "200":
+          description: Массив названий цветов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FlowerName"
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: Список инвентаризаций по магазину
+      parameters:
+        - in: query
+          name: storeId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Список инвентаризаций
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventorySummary"
+    post:
+      tags: [Inventory]
+      summary: Создать инвентаризацию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+              required: [storeId]
+      responses:
+        "201":
+          description: Созданная инвентаризация
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryFull"
+  /inventory/all:
+    get:
+      tags: [Inventory]
+      summary: Список всех инвентаризаций
+      responses:
+        "200":
+          description: Список инвентаризаций
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventorySummary"
+  /inventory/{inventoryId}:
+    get:
+      tags: [Inventory]
+      summary: Получить инвентаризацию
+      parameters:
+        - in: path
+          name: inventoryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Инвентаризация или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/InventoryFull"
+                  - type: "null"
+    put:
+      tags: [Inventory]
+      summary: Сохранить строки инвентаризации
+      parameters:
+        - in: path
+          name: inventoryId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+                rows:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      flowerName:
+                        type: string
+                      pf:
+                        type: number
+                      showcase:
+                        type: number
+                      writeOff:
+                        type: number
+                      bouquets:
+                        type: number
+                    required: [flowerName, pf, showcase, writeOff, bouquets]
+              required: [storeId, rows]
+      responses:
+        "200":
+          description: Обновленная инвентаризация
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryFull"
+    delete:
+      tags: [Inventory]
+      summary: Удалить инвентаризацию
+      parameters:
+        - in: path
+          name: inventoryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Удалённая инвентаризация или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/InventorySummary"
+                  - type: "null"
+  /gone/monthly:
+    get:
+      tags: [Gone]
+      summary: Получить месячный список ушедших клиентов
+      parameters:
+        - in: query
+          name: storeId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: month
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: Месячный список
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoneMonthlyList"
+    put:
+      tags: [Gone]
+      summary: Сохранить месячный список ушедших клиентов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+                month:
+                  type: string
+                  pattern: "^\\d{4}-\\d{2}$"
+                days:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/GoneDayRow"
+              required: [storeId, month, days]
+      responses:
+        "200":
+          description: Обновленный месячный список
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoneMonthlyList"
+  /shift-handovers:
+    get:
+      tags: [ShiftHandovers]
+      summary: Список передач смен на дату
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: storeId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Передачи смен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShiftHandover"
+    post:
+      tags: [ShiftHandovers]
+      summary: Создать передачу смены
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+                date:
+                  type: string
+                  format: date
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      text:
+                        type: string
+                    required: [text]
+              required: [storeId, date, items]
+      responses:
+        "201":
+          description: Созданная передача смены
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShiftHandover"
+  /shift-handovers/{id}/assign:
+    post:
+      tags: [ShiftHandovers]
+      summary: Взять передачу смены на себя
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                userName:
+                  type: string
+      responses:
+        "200":
+          description: Обновленная передача смены или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ShiftHandover"
+                  - type: "null"
+  /shift-handovers/{id}/items:
+    put:
+      tags: [ShiftHandovers]
+      summary: Обновить пункты передачи смены
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ShiftHandoverItem"
+              required: [items]
+      responses:
+        "200":
+          description: Обновленная передача смены или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ShiftHandover"
+                  - type: "null"
+  /routesheets:
+    get:
+      tags: [RouteSheets]
+      summary: Список маршрутных листов на дату
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Список маршрутных листов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    storeId:
+                      type: string
+                    storeName:
+                      type: string
+                    storeAddress:
+                      type: string
+                    date:
+                      type: string
+                      format: date
+                    createdAt:
+                      type: string
+                      format: date-time
+                  required: [id, storeId, date, createdAt]
+    post:
+      tags: [RouteSheets]
+      summary: Создать маршрутный лист
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+                date:
+                  type: string
+                  format: date
+              required: [storeId, date]
+      responses:
+        "201":
+          description: Созданный маршрутный лист
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteSheet"
+  /routesheets/{id}:
+    get:
+      tags: [RouteSheets]
+      summary: Получить маршрутный лист
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Маршрутный лист или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/RouteSheet"
+                  - type: "null"
+    put:
+      tags: [RouteSheets]
+      summary: Сохранить строки маршрутного листа
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rows:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/RouteSheetRow"
+              required: [rows]
+      responses:
+        "200":
+          description: Обновленный маршрутный лист
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteSheet"
+  /feed/posts:
+    get:
+      tags: [Feed]
+      summary: Получить посты ленты
+      responses:
+        "200":
+          description: Посты ленты
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedPost"
+    post:
+      tags: [Feed]
+      summary: Создать пост в ленте
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+              required: [title, content]
+      responses:
+        "201":
+          description: Созданный пост
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedPost"
+  /feed/posts/{id}:
+    delete:
+      tags: [Feed]
+      summary: Удалить пост
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Успешное удаление
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Список уведомлений текущего пользователя
+      responses:
+        "200":
+          description: Уведомления
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+  /notifications/{id}/read:
+    post:
+      tags: [Notifications]
+      summary: Отметить уведомление прочитанным
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Успешное обновление
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Отметить все уведомления прочитанными
+      responses:
+        "204":
+          description: Успешное обновление
+  /dashboard/workers:
+    get:
+      tags: [Dashboard]
+      summary: Кто работает в указанную дату
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Работники по магазинам
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DashboardStoreWorkers"
+  /dashboard/gone-stats:
+    get:
+      tags: [Dashboard]
+      summary: Статистика по ушедшим клиентам по причинам
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Статистика по магазинам
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DashboardGoneStatsByReason"
+
