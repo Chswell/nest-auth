@@ -1,5 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { PrismaService } from '@/prisma/prisma.service'
+import { AuthMethod } from '@prisma/__generated__'
+import { hash } from 'argon2'
 
 // eslint-disable-next-line prettier/prettier
 @Injectable()
@@ -26,7 +28,7 @@ export class UserService {
 	async findByEmail(email: string) {
 		return this.prismaService.user.findUnique({
 			where: {
-				email
+				email: email
 			},
 			include: {
 				accounts: true
@@ -34,7 +36,13 @@ export class UserService {
 		})
 	}
 
-	async create() {}
-
+	async create(userPayload: { email: string, password: string, displayName: string, picture: string, method: AuthMethod, isVerified: boolean }) {
+		return this.prismaService.user.create({
+			data: {
+				...userPayload,
+				password: userPayload.password ? await hash(userPayload.password) : '',
+			}
+		})
+	}
 
 }

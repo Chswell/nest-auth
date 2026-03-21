@@ -1,7 +1,7 @@
 services:
 
   db:
-    container_name: postgres
+    container_name: th-postgres
     image: postgres
     restart: always
     environment:
@@ -15,7 +15,7 @@ services:
     networks:
       - backend
   redis:
-    container_name: redis
+    container_name: th-redis
     image: redis
     restart: always
     ports:

@@ -1,0 +1,13 @@
+import { ValidationArguments, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator'
+import { RegisterDto } from '@/auth/dto/register.dto'
+
+@ValidatorConstraint({ name: 'IsPasswordMatching', async: false })
+export class IsPasswordMatchingConstraint implements ValidatorConstraintInterface {
+	validate(passwordRepeat: string, args?: ValidationArguments):Promise<boolean> | boolean {
+		const obj = args?.object as RegisterDto
+		return obj.password === passwordRepeat
+	}
+
+	defaultMessage(): string {
+		return 'Пароли не совпадают'
+	}}
