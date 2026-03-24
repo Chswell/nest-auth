@@ -1,13 +1,16 @@
 import { ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
+import { SwaggerModule } from '@nestjs/swagger'
 import { RedisStore } from 'connect-redis'
 // import session from 'express-session'
 import ms, { StringValue } from 'ms'
 import { createClient } from 'redis'
 
 import { parseEnvBool } from '@/libs/common/utils/parse-env-bool.util'
+
 import { AppModule } from './app.module'
+import { getSwaggerConfig } from '@/config/swagger.config'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
 const session = require('express-session')
@@ -73,6 +76,13 @@ async function bootstrap() {
 		origin: config.getOrThrow<string>('ALLOWED_ORIGIN'),
 		credentials: true,
 		exposeHeaders: ['set-cookie']
+	})
+
+	const swaggerConfig = getSwaggerConfig()
+	const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig)
+
+	SwaggerModule.setup('/docs', app, swaggerDocument, {
+		jsonDocumentUrl: 'openapi.json'
 	})
 
 	await app.listen(config.getOrThrow<number>('APPLICATION_PORT'))
