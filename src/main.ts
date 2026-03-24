@@ -6,6 +6,7 @@ import { RedisStore } from 'connect-redis'
 import ms, { StringValue } from 'ms'
 import { createClient } from 'redis'
 
+import { parseEnvBool } from '@/libs/common/utils/parse-env-bool.util'
 import { AppModule } from './app.module'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
@@ -39,6 +40,8 @@ async function bootstrap() {
 	})
 	await redisClient.connect()
 
+	const sessionDomain = config.getOrThrow<string>('SESSION_DOMAIN').trim()
+
 	app.useGlobalPipes(
 		new ValidationPipe({
 			transform: true
@@ -53,10 +56,10 @@ async function bootstrap() {
 			resave: true,
 			saveUninitialized: false,
 			cookie: {
-				domain: config.getOrThrow<string>('SESSION_DOMAIN'),
+				...(sessionDomain ? { domain: sessionDomain } : {}),
 				maxAge: ms(config.getOrThrow<StringValue>('SESSION_MAX_AGE')),
-				httpOnly: Boolean(config.getOrThrow<string>('SESSION_HTTP_ONLY')),
-				secure: Boolean(config.getOrThrow<string>('SESSION_SECURE')),
+				httpOnly: parseEnvBool(config.getOrThrow<string>('SESSION_HTTP_ONLY')),
+				secure: parseEnvBool(config.getOrThrow<string>('SESSION_SECURE')),
 				sameSite: 'lax'
 			},
 			store: new RedisStore({
