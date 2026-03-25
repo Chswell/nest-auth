@@ -7,6 +7,7 @@ import { TokenType } from '@prisma/__generated__'
 
 import { MailService } from '@/libs/mail/mail.service'
 
+import { ErrorMessages } from '@/config/error-messages.config'
 import { PrismaService } from '@/prisma/prisma.service'
 
 @Injectable()
@@ -25,23 +26,17 @@ export class TwoFactorAuthService {
 		})
 
 		if (!existingToken) {
-			throw new NotFoundException(
-				'Токен двухфакторной аутентификации не найден. Пожалуйста, убедитесь что вы запрашивали токен для данного адреса электронной почты.'
-			)
+			throw new NotFoundException(ErrorMessages.twoFactor.tokenNotFound)
 		}
 
 		if (existingToken.token !== code) {
-			throw new BadRequestException(
-				'Неверный код. Пожалуйста, проверьте введенный код и попробуйте снова.'
-			)
+			throw new BadRequestException(ErrorMessages.twoFactor.invalidCode)
 		}
 
 		const isExpired = new Date(existingToken.expiresIn) < new Date()
 
 		if (isExpired) {
-			throw new BadRequestException(
-				'Срок действия токена двухфакторной аутентификации истек. Пожалуйста, запросите новый токен.'
-			)
+			throw new BadRequestException(ErrorMessages.twoFactor.tokenExpired)
 		}
 
 		await this.prismaService.token.delete({

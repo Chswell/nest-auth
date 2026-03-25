@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { AuthMethod } from '@prisma/__generated__'
 import { hash } from 'argon2'
 
+import { ErrorMessages } from '@/config/error-messages.config'
 import { PrismaService } from '@/prisma/prisma.service'
 import { UpdateUserDto } from '@/user/dto/update-user.dto'
 import {
@@ -20,9 +21,7 @@ export class UserService {
 		})
 
 		if (!user) {
-			throw new UnauthorizedException(
-				`Пользователь не найден. Пожалуйста, проверьте данные`
-			)
+			throw new UnauthorizedException(ErrorMessages.user.notFoundCheckData)
 		}
 
 		return user

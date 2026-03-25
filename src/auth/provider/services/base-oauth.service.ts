@@ -6,6 +6,11 @@ import {
 
 import { type TypeBaseProviderOptions } from '@/auth/provider/services/types/base-provider.options.types'
 import { type TypeUserInfo } from '@/auth/provider/services/types/user-info.types'
+import {
+	oauthNoTokensFromAccessMessage,
+	oauthTokenRequestFailedMessage,
+	oauthUserProfileFailedMessage
+} from '@/config/error-messages.config'
 
 type TokenResponse = {
 	access_token?: string
@@ -67,7 +72,7 @@ export class BaseOauthService {
 
 		if (!tokenRequest.ok) {
 			throw new BadRequestException(
-				`Не удалось получить пользователя с ${this.options.profile_url}. Проверьте правильность токена.`
+				oauthTokenRequestFailedMessage(this.options.profile_url)
 			)
 		}
 
@@ -76,7 +81,7 @@ export class BaseOauthService {
 
 		if (!tokenResponse?.access_token) {
 			throw new BadRequestException(
-				`Нет токенов с ${this.options.access_url}. Убедитесь, что код авторизации действителен.`
+				oauthNoTokensFromAccessMessage(this.options.access_url)
 			)
 		}
 
@@ -88,7 +93,7 @@ export class BaseOauthService {
 
 		if (!userRequest.ok) {
 			throw new UnauthorizedException(
-				`Не удалось получить пользователя с ${this.options.profile_url}. Проверьте правильность токена доступа.`
+				oauthUserProfileFailedMessage(this.options.profile_url)
 			)
 		}
 

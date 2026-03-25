@@ -16,7 +16,11 @@ export function toPublicUser(
 		return user as PublicUser
 	}
 
-	const { password: _p, accounts, ...rest } = user as User & {
+	const {
+		password: _p,
+		accounts,
+		...rest
+	} = user as User & {
 		accounts?: AccountLike[]
 	}
 	const safeAccounts =

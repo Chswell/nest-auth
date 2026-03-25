@@ -11,6 +11,7 @@ import { MailService } from '@/libs/mail/mail.service'
 
 import { NewPasswordDto } from '@/auth/password-recovery/dto/new-password.dto'
 import { ResetPasswordDto } from '@/auth/password-recovery/dto/reset-password.dto'
+import { ErrorMessages } from '@/config/error-messages.config'
 import { PrismaService } from '@/prisma/prisma.service'
 import { UserService } from '@/user/user.service'
 
@@ -26,9 +27,7 @@ export class PasswordRecoveryService {
 		const existingUser = await this.userService.findByEmailPublic(dto.email)
 
 		if (!existingUser) {
-			throw new NotFoundException(
-				'Пользователь не найден. Пожалуйста, проверьте введенный адрес электронной почты и попробуйте снова.'
-			)
+			throw new NotFoundException(ErrorMessages.common.userNotFoundByEmail)
 		}
 
 		const passwordResetToken = await this.generatePasswordResetToken(
@@ -49,17 +48,13 @@ export class PasswordRecoveryService {
 		})
 
 		if (!existingToken) {
-			throw new NotFoundException(
-				'Токен не найден. Пожалуйста, проверьте правильность введенного токена или запросите новый.'
-			)
+			throw new NotFoundException(ErrorMessages.passwordRecovery.tokenNotFound)
 		}
 
 		const isExpired = new Date(existingToken.expiresIn) < new Date()
 
 		if (isExpired) {
-			throw new BadRequestException(
-				'Токен истек. Пожалуйста, запросите новый токен для подтверждения сброса пароля.'
-			)
+			throw new BadRequestException(ErrorMessages.passwordRecovery.tokenExpired)
 		}
 
 		const existingUser = await this.userService.findByEmailPublic(
@@ -67,9 +62,7 @@ export class PasswordRecoveryService {
 		)
 
 		if (!existingUser) {
-			throw new NotFoundException(
-				'Пользователь не найден. Пожалуйста, проверьте введенный адрес электронной почты и попробуйте снова.'
-			)
+			throw new NotFoundException(ErrorMessages.common.userNotFoundByEmail)
 		}
 
 		await this.prismaService.user.update({

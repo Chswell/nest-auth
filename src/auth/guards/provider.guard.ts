@@ -7,6 +7,7 @@ import {
 import type { Request } from 'express'
 
 import { ProviderService } from '@/auth/provider/provider.service'
+import { providerNotFoundMessage } from '@/config/error-messages.config'
 
 @Injectable()
 export class AuthProviderGuard implements CanActivate {
@@ -23,9 +24,7 @@ export class AuthProviderGuard implements CanActivate {
 		const providerInstance = this.providerService.findByService(provider)
 
 		if (!providerInstance) {
-			throw new NotFoundException(
-				`Провайдер ${provider} не найдет. Пожалуйста, проверьте правильность введенных данных.`
-			)
+			throw new NotFoundException(providerNotFoundMessage(provider))
 		}
 
 		return true

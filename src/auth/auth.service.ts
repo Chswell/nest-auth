@@ -17,6 +17,7 @@ import { RegisterDto } from '@/auth/dto/register.dto'
 import { EmailConfirmationService } from '@/auth/email-confirmation/email-confirmation.service'
 import { ProviderService } from '@/auth/provider/provider.service'
 import { TwoFactorAuthService } from '@/auth/two-factor-auth/two-factor-auth.service'
+import { ErrorMessages } from '@/config/error-messages.config'
 import { PrismaService } from '@/prisma/prisma.service'
 import { toPublicUser } from '@/user/to-public-user.util'
 import type { PublicUser } from '@/user/user-public.types'
@@ -37,9 +38,7 @@ export class AuthService {
 		const isExists = await this.userService.existsByEmail(dto.email)
 
 		if (isExists) {
-			throw new ConflictException(
-				'Ошибка. Пользователь с таким email уже существует.'
-			)
+			throw new ConflictException(ErrorMessages.auth.userAlreadyExists)
 		}
 
 		const newUser = await this.userService.create({
@@ -63,22 +62,18 @@ export class AuthService {
 		const user = await this.userService.findByEmailForAuth(dto.email)
 
 		if (!user || !user.password) {
-			throw new NotFoundException('Пользователь не найден.')
+			throw new NotFoundException(ErrorMessages.auth.userNotFound)
 		}
 
 		const isValidPassword = await verify(user.password, dto.password)
 
 		if (!isValidPassword) {
-			throw new UnauthorizedException(
-				'Неверный пароль. Пожалуйста, попробуйте ещё раз или восстановите пароль.'
-			)
+			throw new UnauthorizedException(ErrorMessages.auth.invalidPassword)
 		}
 
 		if (!user.isVerified) {
 			await this.emailConfirmationService.sendVerificationToken(user.email)
-			throw new UnauthorizedException(
-				'Email не подтвержден. Пожалуйста, проверьте вашу почту и подтвердите адрес.'
-			)
+			throw new UnauthorizedException(ErrorMessages.auth.emailNotVerified)
 		}
 
 		if (user.isTwoFactorEnabled) {
@@ -105,7 +100,7 @@ export class AuthService {
 		const profile = await providerInstance?.findUserByCode(code)
 
 		if (!profile) {
-			throw new NotFoundException('Профиль не был найден')
+			throw new NotFoundException(ErrorMessages.auth.profileNotFound)
 		}
 
 		const account = await this.prismaService.account.findFirst({
@@ -134,7 +129,7 @@ export class AuthService {
 
 		if (!createdUser) {
 			throw new InternalServerErrorException(
-				'Не удалось создать пользователя через OAuth.'
+				ErrorMessages.auth.oauthUserCreateFailed
 			)
 		}
 
@@ -160,7 +155,7 @@ export class AuthService {
 				if (err) {
 					return reject(
 						new InternalServerErrorException(
-							'Не удалось завершить сессию. Возможно возникла проблема с сервером или сессия уже завершена.'
+							ErrorMessages.auth.sessionDestroyFailed
 						)
 					)
 				}
@@ -195,7 +190,7 @@ export class AuthService {
 				if (err) {
 					return reject(
 						new InternalServerErrorException(
-							'Не удалось сохранить сессию. Проверьте правильно ли настроены параметры сессии.'
+							ErrorMessages.auth.sessionSaveFailed
 						)
 					)
 				}

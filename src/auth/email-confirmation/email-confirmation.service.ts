@@ -13,6 +13,7 @@ import { MailService } from '@/libs/mail/mail.service'
 
 import { AuthService } from '@/auth/auth.service'
 import { ConfirmationDto } from '@/auth/email-confirmation/dto/confirmation.dto'
+import { ErrorMessages } from '@/config/error-messages.config'
 import { PrismaService } from '@/prisma/prisma.service'
 import { UserService } from '@/user/user.service'
 
@@ -35,16 +36,14 @@ export class EmailConfirmationService {
 		})
 
 		if (!existingToken) {
-			throw new NotFoundException(
-				'Токен подтверждения не найден. Пожалуйста, убедитесь что у вас правильный токен.'
-			)
+			throw new NotFoundException(ErrorMessages.emailConfirmation.tokenNotFound)
 		}
 
 		const isExpired = new Date(existingToken.expiresIn) < new Date()
 
 		if (isExpired) {
 			throw new BadRequestException(
-				'Токен подтверждения истек. Пожалуйста, запросите новый токен для подтверждения.'
+				ErrorMessages.emailConfirmation.tokenExpired
 			)
 		}
 
@@ -53,9 +52,7 @@ export class EmailConfirmationService {
 		)
 
 		if (!existingUser) {
-			throw new NotFoundException(
-				'Пользователь не найден. Пожалуйста, проверьте введенный адрес электронной почты и попробуйте снова.'
-			)
+			throw new NotFoundException(ErrorMessages.common.userNotFoundByEmail)
 		}
 
 		await this.prismaService.user.update({

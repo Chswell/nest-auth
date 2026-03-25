@@ -23,6 +23,7 @@ import { RegisterDto } from '@/auth/dto/register.dto'
 import { AuthGuard } from '@/auth/guards/auth.guard'
 import { AuthProviderGuard } from '@/auth/guards/provider.guard'
 import { ProviderService } from '@/auth/provider/provider.service'
+import { ErrorMessages } from '@/config/error-messages.config'
 
 @Controller('auth')
 export class AuthController {
@@ -55,7 +56,7 @@ export class AuthController {
 		@Param('provider') provider: string
 	) {
 		if (!code) {
-			throw new BadRequestException('Не был предоставлен код авторизации.')
+			throw new BadRequestException(ErrorMessages.oauth.codeMissing)
 		}
 		await this.authService.extractProfileFromCode(req, provider, code)
 

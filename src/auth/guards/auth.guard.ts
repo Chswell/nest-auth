@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import type { Request } from 'express'
 
+import { ErrorMessages } from '@/config/error-messages.config'
 import { UserService } from '@/user/user.service'
 
 @Injectable()
@@ -16,7 +17,9 @@ export class AuthGuard implements CanActivate {
 		const request = context.switchToHttp().getRequest<Request>()
 
 		if (typeof request.session.userId === 'undefined') {
-			throw new UnauthorizedException('Требуется авторизация')
+			throw new UnauthorizedException(
+				ErrorMessages.guards.authorizationRequired
+			)
 		}
 
 		request.user = await this.userService.findById(request.session.userId)
