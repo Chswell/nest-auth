@@ -51,10 +51,12 @@ model Account {
 model Token {
   id String @id @default(uuid())
 
-  email     String
-  token     String    @unique
-  type      TokenType
-  expiresIn DateTime  @map("expires_in")
+  email String
+  token String    @unique
+  type  TokenType
+
+  expiresIn DateTime @map("expires_in")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("tokens")
 }

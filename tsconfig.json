@@ -26,6 +26,7 @@
 		"noImplicitAny": false,
 		"strictBindCallApply": false,
 		"noFallthroughCasesInSwitch": false,
-		"typeRoots": ["./node_modules/@types"]
+		"typeRoots": ["./node_modules/@types"],
+		"jsx": "react"
 	}
 }

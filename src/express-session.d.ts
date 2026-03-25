@@ -1,5 +1,6 @@
-import type { UserRole } from '@prisma/__generated__'
 import 'express-session'
+
+import type { PublicUser } from '@/user/user-public.types'
 
 declare module 'express-session' {
 	interface SessionData {
@@ -10,9 +11,7 @@ declare module 'express-session' {
 declare global {
 	namespace Express {
 		interface Request {
-			user?: {
-				role: UserRole
-			}
+			user?: PublicUser
 		}
 	}
 }
