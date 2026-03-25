@@ -1,9 +1,13 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
-import { PrismaService } from '@/prisma/prisma.service'
 import { AuthMethod } from '@prisma/__generated__'
 import { hash } from 'argon2'
 
-import { PUBLIC_ACCOUNT_SELECT, PUBLIC_USER_READ } from '@/user/user-public.constants'
+import { PrismaService } from '@/prisma/prisma.service'
+import { UpdateUserDto } from '@/user/dto/update-user.dto'
+import {
+	PUBLIC_ACCOUNT_SELECT,
+	PUBLIC_USER_READ
+} from '@/user/user-public.constants'
 
 @Injectable()
 export class UserService {
@@ -74,6 +78,22 @@ export class UserService {
 			data: {
 				...userPayload,
 				password: userPayload.password ? await hash(userPayload.password) : ''
+			},
+			...PUBLIC_USER_READ
+		})
+	}
+
+	async update(userId: string, dto: UpdateUserDto) {
+		const user = await this.findById(userId)
+
+		return this.prismaService.user.update({
+			where: {
+				id: user.id
+			},
+			data: {
+				email: dto.email,
+				displayName: dto.name,
+				isTwoFactorEnabled: dto.isTwoFactorEnabled
 			},
 			...PUBLIC_USER_READ
 		})
